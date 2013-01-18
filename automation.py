@@ -3,10 +3,20 @@ import time
 import cherrypy
 import threading
 THRESHOLD = 3
+serialLocked = False
+def serialLock():
+    global serialLocked
+    while(serialLocked == True):
+        time.sleep(0.01)
+    serialLocked = True
+def serialUnlock():
+    global serialLocked
+    serialLocked = False
 
 #Switches with amp meters (eg, lightswitches, fans, powerpoints)
 class powerSwitch:
     def __init__(self, pinNumber, description="", analogPin=-1):
+        serialLock()
         self.pinNumber = pinNumber
         self.description = description
         self.analogPin = analogPin
@@ -17,26 +27,40 @@ class powerSwitch:
         if (analogPin == -1):
             self.analogPin = pinNumber-22
         board.output([pinNumber])
+        serialUnlock()
     def toggle(self):
+        serialLock()
         if (self.state == True):
             self.state = False
             board.setLow(self.pinNumber)
-            board.analogWrite(self.pinNumber,0) #need to analogWrite for some reason with this lib on PWM ports
+            #board.analogWrite(self.pinNumber,255) #need to analogWrite for some reason with this lib on PWM ports
         else:
             self.state = True
             board.setHigh(self.pinNumber)
-            board.analogWrite(self.pinNumber,255)
+            #board.analogWrite(self.pinNumber,0)
+        serialUnlock()
     def off(self):
+        serialLock()
         if (int(board.analogRead(self.analogPin)) >= THRESHOLD):
+            serialUnlock()
             self.toggle()
+        serialUnlock()
     def on(self):
+        serialLock()
         if (int(board.analogRead(self.analogPin)) <= THRESHOLD):
+            serialUnlock()
             self.toggle()
+        serialUnlock()
     def isOn(self):
-        if (int(board.analogRead(self.analogPin)) >= THRESHOLD):
+        serialLock()
+        time.sleep(0.05) #slow down comms to serial // possibly test removing latter
+        if (int(board.analogRead(self.analogPin)) <= THRESHOLD):
+            serialUnlock()
             return False
         else:
+            serialUnlock()
             return True
+
 
 #doors that have an unlock switch
 class door:
@@ -50,10 +74,12 @@ class door:
         self.debounceCheck = False
     def checkSwitch(self, loop=False):
         while True:
+            serialLock()
             currentState = board.getState(self.unlockSwitchPin)
+            serialUnlock()
             if currentState != self.lastState:
                 if self.debounceCheck == True:
-                    self.unlock()
+                    self.doorUnlock()
                     self.lastState = currentState
                     self.debounceCheck = False
                 else:
@@ -62,25 +88,54 @@ class door:
                 time.sleep(0.1)
             if loop==False:
                 break
-    def unlock(self,timeout=3):
+    def doorUnlock(self,timeout=3):
+        serialLock()
         board.setHigh(self.latchPin)
         board.analogWrite(self.latchPin,255)
+        serialUnlock()
         time.sleep(timeout)
+        serialLock()
         board.setLow(self.latchPin)
         board.analogWrite(self.latchPin,0)
+        serialUnLock()
 
-class HelloWorld(object):
+class webMappings(object):
     def index(self):
         return "Hello World!"
+    def on(self, switchId):
+        switches[int(switchId)].on()
+        return "On"
+    def off(self, switchId):
+        switches[int(switchId)].off()
+        return "Off"
+    def unlock(self, timer=20):
+        frontDoor.doorUnlock(timer)
+        return "Unlocked"
+    def status(self):
+        y = 0
+        page = ""
+        for switch in switches:
+            print "Checking - " + str(y) + " - " + switch.description
+            if switch.isOn():
+                page = page + str(y) + " - " + switch.description + " - On\n"
+            else:
+                page = page + str(y) + " - " + switch.description + " - Off\n"
+            y = y + 1
+        return page
+        
+    on.exposed = True
+    off.exposed = True
+    unlock.exposed = True
+    status.exposed = True
     index.exposed = True
 
 class webServer(threading.Thread):
     def run(self):
-        cherrypy.quickstart(HelloWorld())
+        cherrypy.quickstart(webMappings())
         
 class checkDoor(threading.Thread):
     def run(self):
-        front_door.checkSwitch(loop=True)
+        frontDoor.checkSwitch(loop=True)
 
 
 board = Arduino('COM3')
@@ -102,7 +157,7 @@ powerSwitch(34,"Outside 1 Light"),
 powerSwitch(35,"Outside 2 Light"),
 ]
 
-front_door = door(47,46)
+frontDoor = door(47,46)
 
 t = webServer()
 t.start()
