@@ -1,6 +1,7 @@
 from arduino import Arduino
 import time
-
+import cherrypy
+import threading
 THRESHOLD = 3
 
 #Switches with amp meters (eg, lightswitches, fans, powerpoints)
@@ -68,6 +69,19 @@ class door:
         board.setLow(self.latchPin)
         board.analogWrite(self.latchPin,0)
 
+class HelloWorld(object):
+    def index(self):
+        return "Hello World!"
+    index.exposed = True
+
+class webServer(threading.Thread):
+    def run(self):
+        cherrypy.quickstart(HelloWorld())
+        
+class checkDoor(threading.Thread):
+    def run(self):
+        front_door.checkSwitch(loop=True)
+
 
 board = Arduino('COM3')
 
@@ -89,3 +103,8 @@ powerSwitch(35,"Outside 2 Light"),
 ]
 
 front_door = door(47,46)
+
+t = webServer()
+t.start()
+t = checkDoor()
+t.start()
