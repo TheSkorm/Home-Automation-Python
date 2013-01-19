@@ -3,10 +3,14 @@ import time
 import cherrypy
 import threading
 import sys
+from cherrypy.lib.static import serve_file 
 
+STATICPATH = 'C:\\Users\\Michael\\Documents\\Home-Automation-Python\static'
 THRESHOLD = 3
 CACHETIME = 0.5 #amount of time in seconds to cache analogs
 serialMutex = threading.Lock()
+config = {'/': {'tools.staticdir.on': True, 'tools.staticdir.dir':STATICPATH}}
+cherrypy.config.update({'server.socket_host': '0.0.0.0','server.socket_port': 8080})
 
 #Switches with amp meters (eg, lightswitches, fans, powerpoints)
 class powerSwitch:
@@ -107,7 +111,7 @@ class door:
         board.setHigh(self.latchPin)
         board.analogWrite(self.latchPin,255)
         serialMutex.release()
-        time.sleep(timeout)
+        time.sleep(float(timeout))
         serialMutex.acquire()
         board.setLow(self.latchPin)
         board.analogWrite(self.latchPin,0)
@@ -115,7 +119,7 @@ class door:
 
 class webMappings(object):
     def index(self):
-        return "Hello World!"
+        return serve_file(STATICPATH + "/index.html") 
     def on(self, switchId):
         switches[int(switchId)].on()
         return "On"
@@ -123,7 +127,8 @@ class webMappings(object):
         switches[int(switchId)].off()
         return "Off"
     def unlock(self, timer=20):
-        frontDoor.doorUnlock(timer)
+        t = threading.Thread(target=frontDoor.doorUnlock, args=(timer,))
+        t.start()
         return "Unlocked"
     def status(self):
         y = 0
@@ -136,7 +141,6 @@ class webMappings(object):
                 page = page + str(y) + " - " + switch.description + " - Off\n"
             y = y + 1
         return page
-        
     on.exposed = True
     off.exposed = True
     unlock.exposed = True
@@ -145,11 +149,12 @@ class webMappings(object):
 
 class webServer(threading.Thread):
     def run(self):
-        cherrypy.quickstart(webMappings())
+        cherrypy.quickstart(webMappings(),'/',config=config)
         
 class checkDoor(threading.Thread):
     def run(self):
         frontDoor.checkSwitch(loop=True)
+
 
 
 def exit():
