@@ -5,8 +5,7 @@ import threading
 import sys
 
 THRESHOLD = 3
-
-
+CACHETIME = 0.5 #amount of time in seconds to cache analogs
 serialMutex = threading.Lock()
 
 #Switches with amp meters (eg, lightswitches, fans, powerpoints)
@@ -17,12 +16,18 @@ class powerSwitch:
         self.description = description
         self.analogPin = analogPin
         self.state = False
-        board.setLow(pinNumber)
+        board.output([pinNumber])
         board.analogWrite(self.pinNumber,0)
+        board.setLow(pinNumber)
         #time.sleep(0.1)
         if (analogPin == -1):
             self.analogPin = pinNumber-22
-        board.output([pinNumber])
+            
+        if (int(board.analogRead(self.analogPin)) <= THRESHOLD):
+            self.isOnCache = False
+        else:
+            self.isOnCache = True
+        self.isOnCacheTimeout = time.time() + CACHETIME
         serialMutex.release()
     def toggle(self):
         serialMutex.acquire()
@@ -36,26 +41,35 @@ class powerSwitch:
             #board.analogWrite(self.pinNumber,0)
         serialMutex.release()
     def off(self):
-        serialMutex.acquire()
-        if (int(board.analogRead(self.analogPin)) >= THRESHOLD):
-            serialMutex.release()
+        if (self.isOn(checkCache=False)):
             self.toggle()
-        serialMutex.release()
     def on(self):
-        serialMutex.acquire()
-        if (int(board.analogRead(self.analogPin)) <= THRESHOLD):
-            serialMutex.release()
+        if (not self.isOn(checkCache=False)):
             self.toggle()
-        serialMutex.release()
-    def isOn(self):
-        serialMutex.acquire()
-        # time.sleep(0.05) #slow down comms to serial // possibly test removing latter
-        if (int(board.analogRead(self.analogPin)) <= THRESHOLD):
+    def isOn(self, checkCache=True):
+        if (time.time() < self.isOnCacheTimeout) and checkCache: #use cache if it's fresh and we are allowed
+            print "cache hit"
+            return self.isOnCache
+        elif(serialMutex.acquire(False)): #check if we can refresh the cache without blocking
+            if (int(board.analogRead(self.analogPin)) <= THRESHOLD):
+                 self.isOnCache = False
+            else:
+                 self.isOnCache = True
             serialMutex.release()
-            return False
-        else:
+            self.isOnCacheTimeout = time.time() + CACHETIME
+            return self.isOnCache
+        elif(checkCache==False):         #if we can't check without blocking and we need fresh data, block
+            serialMutex.acquire()
+            if (int(board.analogRead(self.analogPin)) <= THRESHOLD):
+                 self.isOnCache = False
+            else:
+                 self.isOnCache = True
             serialMutex.release()
-            return True
+            self.isOnCacheTimeout = time.time() + CACHETIME
+            return self.isOnCache            
+        else:                              #else just send the cached data.
+            print "Blocked request, sending cache"
+            return self.isOnCache
 
 
 #doors that have an unlock switch
