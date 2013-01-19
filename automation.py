@@ -2,21 +2,17 @@ from arduino import Arduino
 import time
 import cherrypy
 import threading
+import sys
+
 THRESHOLD = 3
-serialLocked = False
-def serialLock():
-    global serialLocked
-    while(serialLocked == True):
-        time.sleep(0.01)
-    serialLocked = True
-def serialUnlock():
-    global serialLocked
-    serialLocked = False
+
+
+serialMutex = threading.Lock()
 
 #Switches with amp meters (eg, lightswitches, fans, powerpoints)
 class powerSwitch:
     def __init__(self, pinNumber, description="", analogPin=-1):
-        serialLock()
+        serialMutex.acquire()
         self.pinNumber = pinNumber
         self.description = description
         self.analogPin = analogPin
@@ -27,9 +23,9 @@ class powerSwitch:
         if (analogPin == -1):
             self.analogPin = pinNumber-22
         board.output([pinNumber])
-        serialUnlock()
+        serialMutex.release()
     def toggle(self):
-        serialLock()
+        serialMutex.acquire()
         if (self.state == True):
             self.state = False
             board.setLow(self.pinNumber)
@@ -38,27 +34,27 @@ class powerSwitch:
             self.state = True
             board.setHigh(self.pinNumber)
             #board.analogWrite(self.pinNumber,0)
-        serialUnlock()
+        serialMutex.release()
     def off(self):
-        serialLock()
+        serialMutex.acquire()
         if (int(board.analogRead(self.analogPin)) >= THRESHOLD):
-            serialUnlock()
+            serialMutex.release()
             self.toggle()
-        serialUnlock()
+        serialMutex.release()
     def on(self):
-        serialLock()
+        serialMutex.acquire()
         if (int(board.analogRead(self.analogPin)) <= THRESHOLD):
-            serialUnlock()
+            serialMutex.release()
             self.toggle()
-        serialUnlock()
+        serialMutex.release()
     def isOn(self):
-        serialLock()
-        time.sleep(0.05) #slow down comms to serial // possibly test removing latter
+        serialMutex.acquire()
+        # time.sleep(0.05) #slow down comms to serial // possibly test removing latter
         if (int(board.analogRead(self.analogPin)) <= THRESHOLD):
-            serialUnlock()
+            serialMutex.release()
             return False
         else:
-            serialUnlock()
+            serialMutex.release()
             return True
 
 
@@ -72,11 +68,12 @@ class door:
         board.analogWrite(self.latchPin,0)
         self.lastState = board.getState(unlockSwitchPin)
         self.debounceCheck = False
+        self.breakLoop = 0
     def checkSwitch(self, loop=False):
         while True:
-            serialLock()
+            serialMutex.acquire()
             currentState = board.getState(self.unlockSwitchPin)
-            serialUnlock()
+            serialMutex.release()
             if currentState != self.lastState:
                 if self.debounceCheck == True:
                     self.doorUnlock()
@@ -86,18 +83,21 @@ class door:
                     self.debounceCheck = True
             else:
                 time.sleep(0.1)
+            if self.breakLoop == 1:
+                self.breakLoop = 0
+                break
             if loop==False:
                 break
     def doorUnlock(self,timeout=3):
-        serialLock()
+        serialMutex.acquire()
         board.setHigh(self.latchPin)
         board.analogWrite(self.latchPin,255)
-        serialUnlock()
+        serialMutex.release()
         time.sleep(timeout)
-        serialLock()
+        serialMutex.acquire()
         board.setLow(self.latchPin)
         board.analogWrite(self.latchPin,0)
-        serialUnLock()
+        serialMutex.release()
 
 class webMappings(object):
     def index(self):
@@ -138,6 +138,12 @@ class checkDoor(threading.Thread):
         frontDoor.checkSwitch(loop=True)
 
 
+def exit():
+    cherrypy.engine.exit()
+    frontDoor.breakLoop = 1
+    sys.exit("Killed by user")
+	
+
 board = Arduino('COM3')
 
 switches = [
@@ -163,3 +169,8 @@ t = webServer()
 t.start()
 t = checkDoor()
 t.start()
+
+while(1):
+	command = raw_input("> ")
+	if command == "exit":
+		exit()
