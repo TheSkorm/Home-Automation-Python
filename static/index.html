@@ -48,11 +48,12 @@
   </div>
     <script>
     recentlyToggled = [] 
-    function switchLight() {
-        console.log(self)
+    function switchLight(key) {
+        key = key.target.id.replace("switch-","")
+        recentlyToggled.push(key)
         // turns a light or fan on / off
         var postdata = {} ;
-        $.post('/on/0', postdata, function(data) { }  );
+        $.post('/on/' + key, postdata, function(data) { }  );
        // return false ;
     };
 
@@ -65,16 +66,20 @@
     
     function processData(data){
     data = jQuery.parseJSON(data);
-    a = data;
         for (key in data.description) { 
-            if (document.getElementById("list-switch-"+key)) {
-                existing = document.getElementById("list-switch-"+key)
-               // existing.textContent = data.description[key]
+            if (recentlyToggled.indexOf(key) != -1 ){
+                console.log("skipping " + key)
+                recentlyToggled.splice(recentlyToggled.indexOf(key))
+                break;
+            }
+            if (document.getElementById("switch-"+key)) {
+                existing = document.getElementById("switch-"+key)
                 if (data.state[key] == 1){
-                    existing.getElementsByClassName("toggle")[0].classList.add("active")
+                    existing.classList.add("active")
                 } else {
-                    existing.getElementsByClassName("toggle")[0].classList.remove("active")
+                    existing.classList.remove("active")
                 }
+                existing.getElementsByClassName("toggle-handle")[0].style.webkitTransform = ""
             } else {
                 a = document.createElement('li')
                 a.id="list-switch-" + key
@@ -83,6 +88,7 @@
                 c = document.createElement('div')
                 c.classList.add('toggle')
                 c.classList.add('lightSwitch')
+                c.addEventListener('toggle', switchLight)
                 if (data.state[key] == 1){
                     c.classList.add('active')
                 }
@@ -94,15 +100,11 @@
                 switches.appendChild(a) 
                 }
             }
-       document
-      .querySelector('.lightSwitch')
-      .addEventListener('toggle', switchLight)
-      
     }
     
     updateStates();
     
-    t=setInterval("updateStates()",500);
+    t=setInterval("updateStates()",750);
   
     </script>
   </body>
