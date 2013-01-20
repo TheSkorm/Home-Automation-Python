@@ -23,7 +23,6 @@ class powerSwitch:
         board.output([pinNumber])
         board.analogWrite(self.pinNumber,0)
         board.setLow(pinNumber)
-        #time.sleep(0.1)
         if (analogPin == -1):
             self.analogPin = pinNumber-22
             
@@ -100,7 +99,7 @@ class door:
                 else:
                     self.debounceCheck = True
             else:
-                time.sleep(0.1)
+                time.sleep(0.2)
             if self.breakLoop == 1:
                 self.breakLoop = 0
                 break
@@ -132,14 +131,24 @@ class webMappings(object):
         return "Unlocked"
     def status(self):
         y = 0
-        page = ""
+        page = "{\"description\": {"
         for switch in switches:
-            print "Checking - " + str(y) + " - " + switch.description
-            if switch.isOn():
-                page = page + str(y) + " - " + switch.description + " - On\n"
-            else:
-                page = page + str(y) + " - " + switch.description + " - Off\n"
+            if y != 0:
+                page = page + ",\n"
+            page = page + "\"" + str(y) + "\"" + " : \"" + switch.description + "\""
             y = y + 1
+        page = page + "},\"state\": {"
+        y = 0
+        for switch in switches:
+            print "Checking - " + str(y) + " : " + switch.description
+            if y != 0:
+                page = page + ",\n"
+            if switch.isOn():
+                page = page + "\"" + str(y) + "\"" + " : 1"
+            else:
+                page = page + "\"" + str(y) + "\"" + " : 0"
+            y = y + 1
+        page = page + "}}"
         return page
     on.exposed = True
     off.exposed = True

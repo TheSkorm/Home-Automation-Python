@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>Ratchet template page</title>
+    <title>16 Erin Close</title>
 
     <!-- Sets initial viewport load and disables zooming  -->
     <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no">
@@ -36,30 +36,73 @@
   <!-- Wrap all non-bar HTML in the .content div (this is actually what scrolls) -->
   <div class="content">
    <div class="content-padded">
-    <ul class="list">
-  <li>
+    <ul class="list" id="switches">
+<!--  <li>
     Outside Light
     <div class="toggle lightSwitches" id="0">
       <div class="toggle-handle"></div>
     </div>
-  </li>  
+  </li>  -->
 </ul>
   </div>
   </div>
     <script>
-     
-    // When the testform is submitted…
+    recentlyToggled = [] 
     function switchLight() {
+        console.log(self)
         // turns a light or fan on / off
         var postdata = {} ;
         $.post('/on/0', postdata, function(data) { }  );
-        return false ;
+       // return false ;
     };
-        
-    document
-  .querySelector('.lightSwitches')
-  .addEventListener('toggle', switchLight)
-  
+
+    function updateStates() {
+        // checks for config changes and stat changes
+        var postdata = {} ;
+        $.post('/status', postdata, function (data) {processData(data)});
+       // return false ;
+    };        
+    
+    function processData(data){
+    data = jQuery.parseJSON(data);
+    a = data;
+        for (key in data.description) { 
+            if (document.getElementById("list-switch-"+key)) {
+                existing = document.getElementById("list-switch-"+key)
+               // existing.textContent = data.description[key]
+                if (data.state[key] == 1){
+                    existing.getElementsByClassName("toggle")[0].classList.add("active")
+                } else {
+                    existing.getElementsByClassName("toggle")[0].classList.remove("active")
+                }
+            } else {
+                a = document.createElement('li')
+                a.id="list-switch-" + key
+                b = document.createTextNode(data.description[key])
+                a.appendChild(b)
+                c = document.createElement('div')
+                c.classList.add('toggle')
+                c.classList.add('lightSwitch')
+                if (data.state[key] == 1){
+                    c.classList.add('active')
+                }
+                c.id="switch-" + key
+                d = document.createElement('div')
+                d.classList.add("toggle-handle")
+                c.appendChild(d)
+                a.appendChild(c)
+                switches.appendChild(a) 
+                }
+            }
+       document
+      .querySelector('.lightSwitch')
+      .addEventListener('toggle', switchLight)
+      
+    }
+    
+    updateStates();
+    
+    t=setInterval("updateStates()",500);
   
     </script>
   </body>
