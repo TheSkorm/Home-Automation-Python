@@ -30,12 +30,33 @@
 
   <!-- Make sure all your bars are the first things in your <body> -->
   <header class="bar-title">
-    <h1 class="title">16 Erin Close</h1>
+    <a href="#settings"> <h1 class="title">16 Erin Close</h1></a>
   </header>
+<div id="settings" class="popover">
+  <header class="popover-header">
+    <h3 class="title">Settings</h3>
+  </header>
+  <ul class="list">
+  <li>
+  Unlock time
+  </li>
+  <li>
+<form>
+ <div class="input-group">
+<input type="text" placeholder="20" value="20" id="doorLockTimeout" type="number" min="1" max="500">
+    </div>
+</form>
+
+</li>
+</ul>
+</div>
 
   <!-- Wrap all non-bar HTML in the .content div (this is actually what scrolls) -->
   <div class="content">
    <div class="content-padded">
+   <ul class="list" id="doors">
+   <li> Front Door <a id="frontDoor" class="button-negative" onclick="unlockDoor()">Unlock</a></li>
+   </ul>
     <ul class="list" id="switches">
 <!--  <li>
     Outside Light
@@ -49,11 +70,16 @@
     <script>
     recentlyToggled = [] 
     function switchLight(key) {
+        active = key.target.classList.contains("active")
         key = key.target.id.replace("switch-","")
         recentlyToggled.push(key)
         // turns a light or fan on / off
         var postdata = {} ;
+        if (active){
         $.post('/on/' + key, postdata, function(data) { }  );
+        } else {
+        $.post('/off/' + key, postdata, function(data) { }  );
+        }
        // return false ;
     };
 
@@ -62,7 +88,26 @@
         var postdata = {} ;
         $.post('/status', postdata, function (data) {processData(data)});
        // return false ;
-    };        
+    };    
+    
+    function unlockDoor() {
+        // checks for config changes and stat changes
+        var postdata = {} ;
+        $.post('/unlock/'+ doorLockTimeout.value , postdata, function (data) {changeDoor(data)});
+       // return false ;
+    };   
+    
+    
+    function changeDoor(){
+        doorTimeout = setInterval("resetDoor()",doorLockTimeout.value*1000);
+        frontDoor.className = "button-positive";
+    }
+    
+    function resetDoor(){
+        frontDoor.className = "button-negative";
+        clearInterval(doorTimeout);
+    }
+    
     
     function processData(data){
     data = jQuery.parseJSON(data);
@@ -104,7 +149,7 @@
     
     updateStates();
     
-    t=setInterval("updateStates()",750);
+    t=setInterval("updateStates()",2000);
   
     </script>
   </body>

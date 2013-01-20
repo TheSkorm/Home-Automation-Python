@@ -5,8 +5,8 @@ import threading
 import sys
 from cherrypy.lib.static import serve_file 
 
-STATICPATH = 'C:\\Users\\Michael\\Documents\\Home-Automation-Python\static'
-THRESHOLD = 3
+STATICPATH = '/root/Home-Automation-Python/static'
+THRESHOLD = 1
 CACHETIME = 0.5 #amount of time in seconds to cache analogs
 serialMutex = threading.Lock()
 config = {'/': {'tools.staticdir.on': True, 'tools.staticdir.dir':STATICPATH}}
@@ -23,10 +23,11 @@ class powerSwitch:
         board.output([pinNumber])
         board.analogWrite(self.pinNumber,0)
         board.setLow(pinNumber)
+        self.isOnCache = False
         if (analogPin == -1):
             self.analogPin = pinNumber-22
             
-        if (int(board.analogRead(self.analogPin)) <= THRESHOLD):
+        if (int(board.analogRead(self.analogPin)) < THRESHOLD):
             self.isOnCache = False
         else:
             self.isOnCache = True
@@ -51,10 +52,9 @@ class powerSwitch:
             self.toggle()
     def isOn(self, checkCache=True):
         if (time.time() < self.isOnCacheTimeout) and checkCache: #use cache if it's fresh and we are allowed
-            print "cache hit"
             return self.isOnCache
         elif(serialMutex.acquire(False)): #check if we can refresh the cache without blocking
-            if (int(board.analogRead(self.analogPin)) <= THRESHOLD):
+            if (int(board.analogRead(self.analogPin)) < THRESHOLD):
                  self.isOnCache = False
             else:
                  self.isOnCache = True
@@ -63,7 +63,7 @@ class powerSwitch:
             return self.isOnCache
         elif(checkCache==False):         #if we can't check without blocking and we need fresh data, block
             serialMutex.acquire()
-            if (int(board.analogRead(self.analogPin)) <= THRESHOLD):
+            if (int(board.analogRead(self.analogPin)) < THRESHOLD):
                  self.isOnCache = False
             else:
                  self.isOnCache = True
@@ -71,7 +71,6 @@ class powerSwitch:
             self.isOnCacheTimeout = time.time() + CACHETIME
             return self.isOnCache            
         else:                              #else just send the cached data.
-            print "Blocked request, sending cache"
             return self.isOnCache
 
 
@@ -80,10 +79,12 @@ class door:
     def __init__(self, unlockSwitchPin, latchPin):
         self.unlockSwitchPin = unlockSwitchPin
         self.latchPin = latchPin
+        serialMutex.acquire()
         board.output([latchPin])
         board.setLow(self.latchPin)
         board.analogWrite(self.latchPin,0)
         self.lastState = board.getState(unlockSwitchPin)
+        serialMutex.release()
         self.debounceCheck = False
         self.breakLoop = 0
     def checkSwitch(self, loop=False):
@@ -140,7 +141,6 @@ class webMappings(object):
         page = page + "},\"state\": {"
         y = 0
         for switch in switches:
-            print "Checking - " + str(y) + " : " + switch.description
             if y != 0:
                 page = page + ",\n"
             if switch.isOn():
@@ -172,7 +172,7 @@ def exit():
     sys.exit("Killed by user")
 	
 
-board = Arduino('COM3')
+board = Arduino('/dev/ttyACM0')
 
 switches = [
 powerSwitch(22,"Front Light"),
@@ -191,7 +191,7 @@ powerSwitch(34,"Outside 1 Light"),
 powerSwitch(35,"Outside 2 Light"),
 ]
 
-frontDoor = door(47,46)
+frontDoor = door(43,45)
 
 t = webServer()
 t.start()
