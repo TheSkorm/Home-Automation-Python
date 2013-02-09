@@ -12,7 +12,7 @@ cherrypy.config.update({'server.socket_host': '0.0.0.0','server.socket_port': 80
 
 #Switches with amp meters (eg, lightswitches, fans, powerpoints)
 class powerSwitch:
-    def __init__(self, pinNumber, description="", analogPin=-1, threshold=0.2):
+    def __init__(self, pinNumber, description="", analogPin=-1, threshold=0.02):
         serialMutex.acquire()
         self.pinNumber = pinNumber
         self.description = description

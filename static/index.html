@@ -21,7 +21,7 @@
 
     <!-- Include the compiled Ratchet JS -->
     <script src="ratchet.js"></script>
-    
+    <script src="js/fingerblast.js"></script>    
     <script src="jquery-1.9.0.min.js"></script>
     <!-- myToggle.parentElement.classList.add("active") -->
 
@@ -74,7 +74,7 @@
         key = key.target.id.replace("switch-","")
         recentlyToggled.push(key)
         // turns a light or fan on / off
-        var postdata = {} ;
+        var postdata = {"NOCACHE":"YES"} ;
         if (active){
         $.post('/on/' + key, postdata, function(data) { }  );
         } else {
@@ -85,14 +85,14 @@
 
     function updateStates() {
         // checks for config changes and stat changes
-        var postdata = {} ;
+        var postdata = {"NOCACHE":"YES"} ;
         $.post('/status', postdata, function (data) {processData(data)});
        // return false ;
     };    
     
     function unlockDoor() {
         // checks for config changes and stat changes
-        var postdata = {} ;
+        var postdata = {"NOCACHE":"YES"} ;
         $.post('/unlock/'+ doorLockTimeout.value , postdata, function (data) {changeDoor(data)});
        // return false ;
     };   
@@ -149,8 +149,8 @@
     
     updateStates();
     
-    t=setInterval("updateStates()",2000);
-  
+    t=setInterval("updateStates()",750);
+ $(window).on('load', function () { new FingerBlast('.bar-title'); });  
     </script>
   </body>
 </html>
