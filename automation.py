@@ -12,13 +12,14 @@ cherrypy.config.update({'server.socket_host': '0.0.0.0','server.socket_port': 80
 
 #Switches with amp meters (eg, lightswitches, fans, powerpoints)
 class powerSwitch:
-    def __init__(self, pinNumber, description="", analogPin=-1):
+    def __init__(self, pinNumber, description="", analogPin=-1, threshold=0.2):
         serialMutex.acquire()
         self.pinNumber = pinNumber
         self.description = description
         self.analogPin = analogPin
         self.state = False
         self.cachedState = -1  #set the cached state to -1, unlike state, cachedstate is the analog reading
+        self.threshold = threshold
         board.output([pinNumber])
         board.analogWrite(self.pinNumber,0)
         board.setLow(pinNumber)
@@ -46,7 +47,8 @@ class powerSwitch:
             self.toggle()
     def isOn(self):
             serialMutex.acquire()
-            if (int(board.analogRead(self.analogPin))):
+            print str(self.analogPin) + " - " + str(float(board.analogRead(self.analogPin)) )
+            if (float(board.analogRead(self.analogPin)) > self.threshold):
                  serialMutex.release()
                  return True
             else:

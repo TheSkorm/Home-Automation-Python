@@ -1,6 +1,7 @@
 #include <Average.h>
-// record the last 10 readings of the 16 analog inputs
-int analogvalues[16][10] = {0};
+#define SLICES 10
+// record the last 50 readings of the 16 analog inputs
+int analogvalues[16][SLICES] = {0};
 // what number was the last read analoginput pin
 int lastread = -1;
 // The current index
@@ -12,7 +13,7 @@ void checkAnalog(){
    lastread = 0;
    index++; 
   }
-  if (index == 10){
+  if (index == SLICES){
    index = 0;
   }
   analogvalues[lastread][index] = analogRead(lastread);
@@ -48,7 +49,7 @@ void loop() {
             analogWrite(readData(), readData()); break;
         case 4 :
             //read analog value
-            Serial.println(maximum(analogvalues[readData()],10));
+            Serial.println(stddev(analogvalues[readData()],SLICES));
     }
 }
 
@@ -57,6 +58,7 @@ char readData() {
     while(1) {
         if(Serial.available() > 0) {
             return Serial.parseInt();
+            checkAnalog();
         }
         checkAnalog();
     }
