@@ -1,34 +1,21 @@
 <!DOCTYPE html>
-<html>
+<html manifest="automation.appcache">
   <head>
     <meta charset="utf-8">
     <title>16 Erin Close</title>
-
-    <!-- Sets initial viewport load and disables zooming  -->
     <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no">
-
-    <!-- Makes your prototype chrome-less once bookmarked to your phone's home screen -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
-
-    <!-- Set Apple icons for when prototype is saved to home screen -->
     <link rel="apple-touch-icon-precomposed" sizes="114x114" href="touch-icons/apple-touch-icon-114x114.png">
     <link rel="apple-touch-icon-precomposed" sizes="72x72" href="touch-icons/apple-touch-icon-72x72.png">
     <link rel="apple-touch-icon-precomposed" sizes="57x57" href="touch-icons/apple-touch-icon-57x57.png">
-
-    <!-- Include the compiled Ratchet CSS -->
     <link rel="stylesheet" href="ratchet.css">
-
-    <!-- Include the compiled Ratchet JS -->
     <script src="ratchet.js"></script>
-    
+    <script src="fingerblast.js"></script>    
     <script src="jquery-1.9.0.min.js"></script>
-    <!-- myToggle.parentElement.classList.add("active") -->
 
   </head>
   <body>
-
-  <!-- Make sure all your bars are the first things in your <body> -->
   <header class="bar-title">
     <a href="#settings"> <h1 class="title">16 Erin Close</h1></a>
   </header>
@@ -50,107 +37,15 @@
 </li>
 </ul>
 </div>
-
-  <!-- Wrap all non-bar HTML in the .content div (this is actually what scrolls) -->
   <div class="content">
    <div class="content-padded">
    <ul class="list" id="doors">
    <li> Front Door <a id="frontDoor" class="button-negative" onclick="unlockDoor()">Unlock</a></li>
    </ul>
     <ul class="list" id="switches">
-<!--  <li>
-    Outside Light
-    <div class="toggle lightSwitches" id="0">
-      <div class="toggle-handle"></div>
-    </div>
-  </li>  -->
 </ul>
   </div>
   </div>
-    <script>
-    recentlyToggled = [] 
-    function switchLight(key) {
-        active = key.target.classList.contains("active")
-        key = key.target.id.replace("switch-","")
-        recentlyToggled.push(key)
-        // turns a light or fan on / off
-        var postdata = {} ;
-        if (active){
-        $.post('/on/' + key, postdata, function(data) { }  );
-        } else {
-        $.post('/off/' + key, postdata, function(data) { }  );
-        }
-       // return false ;
-    };
-
-    function updateStates() {
-        // checks for config changes and stat changes
-        var postdata = {} ;
-        $.post('/status', postdata, function (data) {processData(data)});
-       // return false ;
-    };    
-    
-    function unlockDoor() {
-        // checks for config changes and stat changes
-        var postdata = {} ;
-        $.post('/unlock/'+ doorLockTimeout.value , postdata, function (data) {changeDoor(data)});
-       // return false ;
-    };   
-    
-    
-    function changeDoor(){
-        doorTimeout = setInterval("resetDoor()",doorLockTimeout.value*1000);
-        frontDoor.className = "button-positive";
-    }
-    
-    function resetDoor(){
-        frontDoor.className = "button-negative";
-        clearInterval(doorTimeout);
-    }
-    
-    
-    function processData(data){
-    data = jQuery.parseJSON(data);
-        for (key in data.description) { 
-            if (recentlyToggled.indexOf(key) != -1 ){
-                console.log("skipping " + key)
-                recentlyToggled.splice(recentlyToggled.indexOf(key))
-                break;
-            }
-            if (document.getElementById("switch-"+key)) {
-                existing = document.getElementById("switch-"+key)
-                if (data.state[key] == 1){
-                    existing.classList.add("active")
-                } else {
-                    existing.classList.remove("active")
-                }
-                existing.getElementsByClassName("toggle-handle")[0].style.webkitTransform = ""
-            } else {
-                a = document.createElement('li')
-                a.id="list-switch-" + key
-                b = document.createTextNode(data.description[key])
-                a.appendChild(b)
-                c = document.createElement('div')
-                c.classList.add('toggle')
-                c.classList.add('lightSwitch')
-                c.addEventListener('toggle', switchLight)
-                if (data.state[key] == 1){
-                    c.classList.add('active')
-                }
-                c.id="switch-" + key
-                d = document.createElement('div')
-                d.classList.add("toggle-handle")
-                c.appendChild(d)
-                a.appendChild(c)
-                switches.appendChild(a) 
-                }
-            }
-    }
-    
-    updateStates();
-    
-    t=setInterval("updateStates()",500);
-  new FingerBlast('#switches');
-    </script>
+  <script src="automation.js"></script>
   </body>
 </html>

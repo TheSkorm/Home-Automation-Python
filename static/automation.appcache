@@ -1,0 +1,13 @@
+CACHE MANIFEST
+fingerblast.js
+/
+jquery-1.9.0.min.js
+ratchet.css
+ratchet.js
+automation.js
+touch-icons/apple-touch-icon-57x57.png
+touch-icons/apple-touch-icon-72x72.png
+touch-icons/apple-touch-icon-114x114.png
+
+NETWORK:
+*
