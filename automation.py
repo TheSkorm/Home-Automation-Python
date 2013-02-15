@@ -3,6 +3,7 @@ import time
 import cherrypy
 import threading
 import sys
+import traceback
 from cherrypy.lib.static import serve_file
 
 STATICPATH = '/root/Home-Automation-Python/static'
@@ -148,10 +149,13 @@ class webMappings(object):
 class webServer(threading.Thread):
     def run(self):
         cherrypy.quickstart(webMappings(),'/',config=config)
-
 class checkDoor(threading.Thread):
     def run(self):
-        frontDoor.checkSwitch(loop=True)
+        try:
+            frontDoor.checkSwitch(loop=True)
+        except:
+            traceback.print_exc(file=sys.stdout)
+            restart()
 
 class updateSwitchCache(threading.Thread):
     def run(self):
@@ -160,34 +164,41 @@ class updateSwitchCache(threading.Thread):
            time.sleep(0.3)
            print "Updating switch cache"
            for switch in switches:
-               switch.updateCache()
+               try:
+                   switch.updateCache()
+               except:
+                   traceback.print_exc(file=sys.stdout)
+                   restart()
 
 def exit():
-    cherrypy.engine.exit()
+    cherrypy.engine.stop()
     frontDoor.breakLoop = 1
-    t0.breakLoop = 1
-    sys.exit("Killed by user")
+    switches_thread.breakLoop = 1
 
 
-board = Arduino('/dev/ttyUSB0')
-#switches = [
-#powerSwitch(22,"Front Light"),
-#powerSwitch(23,"Kitchen Light"),
-#powerSwitch(24,"Dinning Room Light"),
-#powerSwitch(25,"Lounge Room 1 Light"),
-#powerSwitch(26,"Lounge Room 2 Light"),
-#powerSwitch(27,"Bedroom 1 Light"),
-#powerSwitch(28,"Bedroom 1 Fan"),
-#powerSwitch(29,"Bedroom 2 Light"),
-#powerSwitch(30,"Bedroom 2 Fan"),
-#powerSwitch(31,"Bedroom 3 Light"),
-#powerSwitch(32,"Bedroom 3 Fan"),
-#powerSwitch(33,"Hallway"),
-#powerSwitch(34,"Outside 1 Light"),
-#powerSwitch(35,"Outside 2 Light"),
-#]
+switches = []
+board = 0
+frontDoor = 0
+web_thread = 0
+door_thread = 0
+swithes_thread = 0
 
-switches = [
+def restart():
+   print "Restarting"
+   exit()
+   start()
+
+def start():
+   print "Starting"
+   global switches
+   global board
+   global frontdoor
+   global web_thread
+   global door_thread
+   global swithes_thread
+   board = Arduino('/dev/arduino')
+
+   switches = [
 powerSwitch(22,"Front Light"),
 powerSwitch(23,"Kitchen Light"),
 powerSwitch(24,"Dinning Room Light"),
@@ -200,19 +211,14 @@ powerSwitch(29,"Bedroom 2 Light"),
 powerSwitch(31,"Bedroom 2 Fan"),
 powerSwitch(30,"Bedroom 3 Light")
 ]
+   frontDoor = door(43,45)
+
+   web_thread = webServer()
+   web_thread.start()
+   door_thread = checkDoor()
+   door_thread.start()
+   switches_thread = updateSwitchCache()
+   switches_thread.start()
 
 
-frontDoor = door(43,45)
-
-t = webServer()
-t.start()
-t = checkDoor()
-t.start()
-t0 = updateSwitchCache()
-t0.start()
-
-while(1):
-        command = raw_input("> ")
-        if command == "exit":
-                exit()
-
+start()
